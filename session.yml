@@ -1,0 +1,53 @@
+name: ci-android-build
+on:
+  workflow_dispatch:
+    inputs:
+      duration:
+        description: 'Session duration (minutes, max 350)'
+        required: false
+        default: '350'
+
+env:
+  DEBIAN_FRONTEND: noninteractive
+  ANDROID_SDK_ROOT: /opt/android-sdk
+  ANDROID_AVD_HOME: /home/runner/.android/avd
+  AVD_NAME: S23_Unit
+  DISPLAY: ':1'
+  VNC_PORT: '5901'
+  NOVNC_PORT: '6080'
+  GATE_PORT: '8080'
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 360
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: phase-setup
+        run: bash scripts/01_setup.sh
+
+      - name: phase-avd
+        run: bash scripts/02_avd.sh
+
+      - name: phase-start
+        run: bash scripts/03_start.sh
+
+      - name: phase-spoof
+        run: bash scripts/04_spoof.sh
+
+      - name: phase-gate
+        env:
+          SESSION_KEY: ${{ secrets.VNC_PASS }}
+        run: bash scripts/05_gate.sh
+
+      - name: phase-tunnel
+        run: bash scripts/06_tunnel.sh
+
+      - name: phase-hold
+        run: |
+          dur="${{ github.event.inputs.duration }}"
+          dur="${dur:-350}"
+          echo "session active for ${dur}m"
+          sleep "$((dur * 60))"
